@@ -23,6 +23,7 @@ mediapipe==0.10.8
 pyaudio==0.2.14
 pydub==0.25.1
 pygame==2.5.2
+sounddevice==0.4.6
 
 # Aliyun DashScope SDK (ASR & Qwen-Omni)
 dashscope==1.14.1
