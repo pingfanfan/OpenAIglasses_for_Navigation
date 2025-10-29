@@ -552,3 +552,35 @@ python test_recorder.py
 本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
 
 
+## 🛠️ 无需 ESP32 的一步步运行脚本
+
+下列命令按照顺序执行，即可在 **仅使用录制视频 + 电脑麦克风** 的情况下完整体验系统：
+
+```bash
+# 1. 创建虚拟环境并安装依赖（首次执行即可）
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+
+# 2. 复制环境变量模板并写入 DashScope Key
+copy .env.example .env
+notepad .env
+
+# 3. 放置模型后执行预检查，确认环境配置无误
+python scripts/preflight_check.py
+
+# 4. 启动 FastAPI 主服务
+python app_main.py
+
+# 5. 新终端推送录制视频到 /ws/camera（示例使用循环播放）
+python scripts/replay_video.py path\to\demo.mp4 --loop
+
+# 6. 再开一终端推送麦克风音频到 /ws_audio（如需指定设备可加 --device）
+python scripts/mic_ws_client.py --uri ws://127.0.0.1:8081/ws_audio
+
+# 7. 浏览器访问监控界面并发出语音指令
+start http://localhost:8081
+```
+
+> 提示：上述步骤均在同一台 Windows 电脑上完成；若要退出语音推流，按 `Ctrl+C` 即会向服务端发送 `STOP` 并断开连接。
+
