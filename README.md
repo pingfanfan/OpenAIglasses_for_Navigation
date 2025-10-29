@@ -117,6 +117,14 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+> ⚠️ **Windows 上安装 PyAudio**
+>
+> PyAudio 没有官方 Windows 轮子，如果 `pip install -r requirements.txt` 报错，可执行：
+> 1. `pip install pipwin`
+> 2. `pipwin install pyaudio`
+>
+> 或者暂时跳过（删除 `requirements.txt` 中的 `pyaudio` 行），系统仍可通过 `scripts/mic_ws_client.py` 使用麦克风。
+
 #### 安装 CUDA 和 cuDNN（GPU 加速）
 请参考 [NVIDIA CUDA Toolkit 安装指南](https://developer.nvidia.com/cuda-downloads)
 
@@ -134,18 +142,29 @@ pip install -r requirements.txt
 
 ### 4. 配置 API 密钥
 
-创建 `.env` 文件：
+复制 `.env.example` 为 `.env` 并填入自己的 DashScope Key：
 
 ```bash
-# .env
-DASHSCOPE_API_KEY=your_api_key_here
+copy .env.example .env
+# 编辑 .env，填入 DASHSCOPE_API_KEY
 ```
 
-或在代码中直接修改（不推荐）：
+如需覆盖模型路径，也可以直接在 `.env` 中增加 `BLIND_PATH_MODEL`、`OBSTACLE_MODEL` 等变量。仍可在代码中直接修改（不推荐）：
 ```python
 # app_main.py, line 50
 API_KEY = "your_api_key_here"
 ```
+
+> 💡 **在 Windows 上推荐先执行环境自检**
+>
+> 运行 `python scripts/preflight_check.py` 会检查常见坑点：
+> - `.env` 是否已填入 `DASHSCOPE_API_KEY`
+> - `model/` 下的关键模型是否齐全
+> - `voice/` 语音资源是否存在（或提醒关闭 `ENABLE_TTS`）
+> - `torch`、`ultralytics`、`opencv-python`、`websockets`、`sounddevice` 等模块是否能导入
+> - 是否安装了用于视频/麦克风推流的两个脚本
+>
+> 所有检查通过会提示 `总结: 0 个错误`。若看到 `PyAudio` 无法安装，可暂时忽略（默认语音输入脚本只依赖 `sounddevice`）。
 
 ### 5. 启动系统
 
@@ -155,7 +174,32 @@ python app_main.py
 
 系统将在 `http://0.0.0.0:8081` 启动，打开浏览器访问即可看到实时监控界面。
 
-### 6. 连接设备（可选）
+### 6. 使用录制视频模拟摄像头（无硬件快速体验）
+
+在另一个终端启动视频回放脚本，把本地视频推送到 `/ws/camera`：
+
+```bash
+python scripts/replay_video.py path\to\demo.mp4 --loop
+```
+
+脚本会按照视频原始帧率把画面编码成 JPEG 并推送到 FastAPI 服务，界面将像连接 ESP32-CAM 一样实时更新。若拥有 NVIDIA GPU，PyTorch 会自动选择 CUDA；如需强制 CPU，可在运行前设置 `set CUDA_VISIBLE_DEVICES=`（PowerShell 使用 `$env:CUDA_VISIBLE_DEVICES=""`）。
+
+### 7. 使用电脑麦克风进行语音控制（无需额外硬件）
+
+服务端默认就能接受 `/ws_audio` WebSocket 的语音数据，为了直接使用 Windows 电脑的麦克风，只需在同一台机器上运行下列脚本：
+
+```bash
+pip install sounddevice websockets
+python scripts/mic_ws_client.py --uri ws://127.0.0.1:8081/ws_audio
+```
+
+- 首次运行可执行 `python -m sounddevice` 查看可用输入设备，把名称/编号传给 `--device` 手动选择麦克风。
+- 保持终端窗口打开即可持续把 16kHz PCM 音频推送到服务端，Web UI 会显示“已开始接收音频…”。
+- 按 `Ctrl+C` 会发送 `STOP` 并优雅地断开连接。
+
+脚本内部遵循和 ESP32 完全一致的协议：连接后发送 `START`，随后以 20ms 为一帧发送 PCM16 音频。DashScope 的识别结果仍会触发导航状态机、语音播报等逻辑，无需修改服务器代码。
+
+### 8. 连接设备（可选）
 
 如果使用 ESP32-CAM，请：
 1. 烧录 `compile/compile.ino` 到 ESP32

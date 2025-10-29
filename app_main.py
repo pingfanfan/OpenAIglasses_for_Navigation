@@ -4,6 +4,7 @@ import os, sys, time, json, asyncio, base64, audioop
 from typing import Any, Dict, Optional, Tuple, List, Callable, Set, Deque
 from collections import deque
 from dataclasses import dataclass
+from pathlib import Path
 import re
 # 在其它 import 之后加：
 from qwen_extractor import extract_english_label
@@ -116,17 +117,25 @@ omni_conversation_active = False  # 标记omni对话是否正在进行
 omni_previous_nav_state = None  # 保存omni激活前的导航状态，用于恢复
 
 # 【新增】模型加载函数
+def _default_model_path(filename: str) -> Path:
+    """Return the repository relative path for a model file."""
+
+    return Path(__file__).resolve().parent / "model" / filename
+
+
 def load_navigation_models():
     """加载盲道导航所需的模型"""
     global yolo_seg_model, obstacle_detector
 
     try:
-        seg_model_path = os.getenv("BLIND_PATH_MODEL", r"C:\Users\Administrator\Desktop\rebuild1002\model\yolo-seg.pt")
+        seg_model_path = Path(
+            os.getenv("BLIND_PATH_MODEL", str(_default_model_path("yolo-seg.pt")))
+        )
         #print(f"[NAVIGATION] 尝试加载模型: {seg_model_path}")
 
-        if os.path.exists(seg_model_path):
+        if seg_model_path.exists():
             print(f"[NAVIGATION] 模型文件存在，开始加载...")
-            yolo_seg_model = YOLO(seg_model_path)
+            yolo_seg_model = YOLO(str(seg_model_path))
 
             # 强制放到 GPU
             if torch.cuda.is_available():
@@ -151,17 +160,19 @@ def load_navigation_models():
         else:
             print(f"[NAVIGATION] 错误：找不到模型文件: {seg_model_path}")
             print(f"[NAVIGATION] 当前工作目录: {os.getcwd()}")
-            print(f"[NAVIGATION] 请检查文件路径是否正确")
-            
+            print(f"[NAVIGATION] 请检查文件路径是否正确或者在 .env 中设置 BLIND_PATH_MODEL")
+
         # 【修改开始】使用 ObstacleDetectorClient 替代直接的 YOLO
-        obstacle_model_path = os.getenv("OBSTACLE_MODEL", r"C:\Users\Administrator\Desktop\rebuild1002\model\yoloe-11l-seg.pt")
+        obstacle_model_path = Path(
+            os.getenv("OBSTACLE_MODEL", str(_default_model_path("yoloe-11l-seg.pt")))
+        )
         print(f"[NAVIGATION] 尝试加载障碍物检测模型: {obstacle_model_path}")
-        
-        if os.path.exists(obstacle_model_path):
+
+        if obstacle_model_path.exists():
             print(f"[NAVIGATION] 障碍物检测模型文件存在，开始加载...")
             try:
                 # 使用 ObstacleDetectorClient 封装的 YOLO-E
-                obstacle_detector = ObstacleDetectorClient(model_path=obstacle_model_path)
+                obstacle_detector = ObstacleDetectorClient(model_path=str(obstacle_model_path))
                 print(f"[NAVIGATION] ========== YOLO-E 障碍物检测器加载成功 ==========")
                 
                 # 检查模型是否成功加载
@@ -216,7 +227,13 @@ def load_navigation_models():
                 traceback.print_exc()
                 obstacle_detector = None
         else:
-            print(f"[NAVIGATION] 警告：找不到障碍物检测模型文件: {obstacle_model_path}")
+            print(
+                "[NAVIGATION] 未找到障碍物检测模型，将在没有障碍物识别的情况下继续运行。"
+            )
+            print(
+                "[NAVIGATION] 请在 .env 中设置 OBSTACLE_MODEL 指向模型，或将模型放入 model/ 目录。"
+            )
+            obstacle_detector = None
         
     except Exception as e:
         print(f"[NAVIGATION] 模型加载失败: {e}")
