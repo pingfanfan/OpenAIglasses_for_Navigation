@@ -1,0 +1,55 @@
+python 3.11 用绝对路径
+
+# 1. 用绝对路径创建虚拟环境
+& "C:\Users\dd\apps\Python3.11\python.exe" -m venv venv
+
+# 2. 激活虚拟环境
+.\venv\Scripts\Activate.ps1
+
+# 3. 检查python版本（应该输出3.11.x）
+python --version
+
+
+
+
+
+Model
+
+# 1) 盲道分割：Ultralytics YOLO11-L Seg 预训练
+curl -L -o model/yolo-seg.pt https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11l-seg.pt
+
+# 2) 开放词汇 YOLOE-11L-Seg
+curl -L -o model/yoloe-11l-seg.pt https://huggingface.co/jameslahm/yoloe/resolve/main/yoloe-11l-seg.pt?download=true
+
+# 3) 红绿灯检测：下载并解压，然后重命名为 trafficlight.pt
+curl -L -o /tmp/tl.zip https://github.com/Satish-Vennapu/Traffic-Light-Detection-using-YOLOv8/raw/main/traffic_light_detection_trained_weights.zip
+unzip -j /tmp/tl.zip -d model && mv model/best.pt model/trafficlight.pt
+
+# 4) 手部检测（用你仓库里的现成文件）
+curl -L -o model/hand_landmarker.task https://raw.githubusercontent.com/pingfanfan/OpenAIglasses_for_Navigation/main/hand_landmarker.task
+
+
+激活
+cd D:\pingfan\AIGlass\AIGlass2\OpenAIglasses_for_Navigation
+.\venv\Scripts\Activate.ps1
+
+
+使用
+
+1 进入到 venv
+cd D:\pingfan\AIGlass\AIGlass2\OpenAIglasses_for_Navigation
+ .\venv\Scripts\Activate.ps1
+
+2 run main
+
+python app_main.py        
+
+
+3 stream video
+
+python scripts/replay_video.py demo.mp4 --loop        
+
+4 enable voice
+pip install sounddevice websockets
+python scripts/mic_ws_client.py --uri ws://127.0.0.1:8081/ws_audio
+                                 
